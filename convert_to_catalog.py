@@ -871,9 +871,17 @@ def write_catalog(catalog_dir: Path, instruments: list[Any], bars: list[Bar], ti
 
 
 def write_csv_views(output_dir: Path, **tables: list[dict[str, Any]]) -> None:
+    """Write only the normalized CSV views for the current conversion.
+
+    Remove stale known views first so a later conversion that omits, for
+    example, quote data cannot leave an old quote file that looks current.
+    Raw input CSVs are never touched by this function.
+    """
     output_dir.mkdir(parents=True, exist_ok=True)
     names = {"bars": "btc_underlying_bars.csv", "ticks": "btc_option_execution_ticks.csv",
              "quotes": "btc_option_quotes.csv", "greeks": "btc_option_greeks.csv"}
+    for filename in names.values():
+        (output_dir / filename).unlink(missing_ok=True)
     for key, rows in tables.items():
         if rows:
             pd.DataFrame(rows).to_csv(output_dir / names[key], index=False)
@@ -886,7 +894,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Convert local Bybit BTC option CSVs into a NautilusTrader catalog and normalized CSVs")
     parser.add_argument("files", nargs="*", help="CSV paths; omit to open a file picker (needs tkinter)")
-    parser.add_argument("--catalog", default="bybit_btc_options_catalog", help="Nautilus Parquet catalog folder")
+    parser.add_argument("--catalog", default="bybit_nautilus_catalog", help="Nautilus Parquet catalog folder")
     parser.add_argument("--csv-output", default="bybit_normalized", help="Folder for normalized output CSVs")
     parser.add_argument("--overwrite", action="store_true", help="Replace an existing non-empty catalog folder")
     parser.add_argument("--specs", nargs="*", default=[],
